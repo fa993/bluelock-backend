@@ -12,6 +12,7 @@ from fastapi.encoders import jsonable_encoder
 import whisper
 import os
 import json
+import time
 from tempfile import NamedTemporaryFile
 from websocket_pool import ConnectionManager
 
@@ -47,6 +48,7 @@ async def hello():
 
 @app.post('/call/transcribe')
 def transcribe(file: UploadFile):
+    start_time = time.time()
     temp = NamedTemporaryFile(delete=False)
     try:
         try:
@@ -60,6 +62,8 @@ def transcribe(file: UploadFile):
             file.file.close()
 
         result = model.transcribe(temp.name, fp16=False)
+        print("Time took to process the request and return response is {} sec".format(
+            time.time() - start_time))
         return {"transcript": result["text"]}
 
     except Exception:

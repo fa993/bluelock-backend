@@ -13,9 +13,6 @@ class ConnectionManager:
         for cons in self.active_connections.values():
             cons.remove(websocket)
 
-    # async def send_personal_message(self, message: str, channel_id: str, websocket: WebSocket):
-    #     await websocket.send_text(message)
-
     async def broadcast(self, message: str, channel_id: str):
         for connection in self.active_connections.get(channel_id, []):
             await connection.send_text(message)

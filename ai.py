@@ -1,4 +1,5 @@
 import google.generativeai as genai
+from google.generativeai import ChatSession
 from dotenv import load_dotenv
 import os
 
@@ -36,6 +37,26 @@ safety_settings = [
 model = genai.GenerativeModel(model_name="gemini-1.0-pro",
                               generation_config=generation_config,
                               safety_settings=safety_settings)
+
+
+class SessionManager:
+
+    def __init__(self):
+        self.cons = {}
+        self.sessions: dict[str, list[ChatSession]] = {}
+
+    def accept_connection(self, channel_id: str, user_id: int, username: str):
+        if not self.sessions[channel_id]:
+            # Add starting prompt
+            self.sessions[channel_id] = model.start_chat(history=[])
+        self.cons.setdefault(channel_id, []).append(user_id)
+
+    def destroy_connection(self, channel_id: str, user_id: int):
+        for se in self.cons.values():
+            se.remove(user_id)
+            if not se:
+                del self.sessions[channel_id]
+
 
 convo = model.start_chat(history=[
 ])
