@@ -26,3 +26,14 @@ class Message(Base):
 
     def __repr__(self):
         return 'Store(name=%s)' % self.name
+
+
+class Analysis(Base):
+    __tablename__ = "analysis"
+    id = Column(Integer, primary_key=True, index=True)
+    channel_id = Column(String(512), nullable=False, index=True)
+    summary = Column(String(4096), nullable=False)
+    last_message_id = Column(Integer)
+
+    def __repr__(self) -> str:
+        return 'Analysis(channel_id=%s)' % self.channel_id

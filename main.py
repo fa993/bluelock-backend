@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from db import get_db, engine
 import models as models
 import schemas as schemas
-from repositories import UserRepo, MessageRepo
+from repositories import UserRepo, MessageRepo, AnalysisRepo
 from sqlalchemy.orm import Session
 from fastapi.encoders import jsonable_encoder
 import whisper
@@ -14,7 +14,7 @@ import json
 import time
 from tempfile import NamedTemporaryFile
 from websocket_pool import ConnectionManager
-from ai import SessionManager, send_to_gemini
+from ai import SessionManager, send_to_gemini, analyse_from_gemini
 
 manager = ConnectionManager()
 ai_manager = SessionManager()
@@ -95,6 +95,18 @@ async def post_message(channel_id, user_id, file: UploadFile, background_tasks: 
         send_to_gemini, msg, flags, ai_manager, manager, db)
     await manager.broadcast(json.dumps(jsonable_encoder(msg)), channel_id)
     return msg
+
+
+@app.post('/{channel_id}/analyse')
+async def analysis(channel_id: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    # Check if last message on the channel is the same as analysis
+    # if it is then push last analysis to socket
+    last = AnalysisRepo.fetch_latest(db, channel_id)
+    if last and MessageRepo.fetch_by_channel(db, channel_id, 0, 1)[0].id == last.last_message_id:
+        await manager.broadcast(json.dumps(jsonable_encoder({"summary": last.summary})), channel_id)
+    else:
+        background_tasks.add_task(
+            analyse_from_gemini, channel_id, ai_manager, manager, db)
 
 
 @app.get('/user/get')

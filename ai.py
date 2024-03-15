@@ -17,7 +17,7 @@ PROMPT = """You will be given a transcript of a conversation, You must detect an
 
 # Set up the model
 generation_config = {
-    "temperature": 0.9,
+    "temperature": 0.5,
     "top_p": 1,
     "top_k": 1,
     "max_output_tokens": 2048,
@@ -79,6 +79,22 @@ async def send_to_gemini(msg: models.Message, flags, session_manager: SessionMan
     res = res.strip('```')
     res = res.strip()
     res = res.strip("json")
+    res = res.strip()
     repositories.MessageRepo.update_ai(db, msg.id, res)
     msg.AIComments = res
     await ws_manager.broadcast(json.dumps(jsonable_encoder(msg)), msg.channel_id)
+
+
+async def analyse_from_gemini(channel_id, session_manager: SessionManager, ws_manager: ConnectionManager, db: Session):
+    convo = session_manager.sessions.get(channel_id, None)
+    if not convo:
+        return
+    response = await convo.send_message_async(f"Summarize the entire conversation so far in 200 words plaintext no json (just for this promp)")
+    res = response.text
+    res = res.strip('```')
+    res = res.strip()
+    res = res.strip("json")
+    res = res.strip()
+    repositories.AnalysisRepo.update_summary(db, channel_id, res)
+    msg = repositories.AnalysisRepo.fetch_latest(db, channel_id)
+    await ws_manager.broadcast(json.dumps(jsonable_encoder(msg)), channel_id)

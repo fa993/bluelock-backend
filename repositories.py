@@ -61,3 +61,21 @@ class MessageRepo:
         db.query(models.Message).filter_by(
             id=msg_id).update({'AIComments': raw_op})
         db.commit()
+
+
+class AnalysisRepo:
+
+    def fetch_latest(db: Session, channel_id: str):
+        return db.query(models.Analysis).filter_by(
+            channel_id=channel_id).first()
+
+    def update_summary(db: Session, channel_id: str, summary: str):
+        if db.query(db.query(models.Analysis).filter_by(channel_id=channel_id).exists()).scalar():
+            db.query(models.Analysis).filter_by(
+                channel_id=channel_id).update({"summary": summary})
+        else:
+            last_ref = MessageRepo.fetch_by_channel(db, channel_id, 0, 1)[0]
+            db_item = models.Analysis(
+                channel_id=channel_id, summary=summary, last_message_id=last_ref.id)
+            db.add(db_item)
+        db.commit()
