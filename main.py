@@ -1,5 +1,5 @@
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import Depends, FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.responses import JSONResponse
 from db import get_db, engine
 import models as models
@@ -7,7 +7,6 @@ import schemas as schemas
 from repositories import UserRepo, MessageRepo
 from sqlalchemy.orm import Session
 import uvicorn
-from typing import List, Optional
 from fastapi.encoders import jsonable_encoder
 import whisper
 import os
@@ -15,8 +14,10 @@ import json
 import time
 from tempfile import NamedTemporaryFile
 from websocket_pool import ConnectionManager
+from ai import SessionManager, send_to_gemini
 
 manager = ConnectionManager()
+ai_manager = SessionManager()
 
 model = whisper.load_model('base')
 
@@ -60,7 +61,9 @@ def transcribe(file: UploadFile):
                 status_code=500, detail='Error on uploading the file')
         finally:
             file.file.close()
-
+        print("Time took to do file stuff {} sec".format(
+            time.time() - start_time))
+        start_time = time.time()
         result = model.transcribe(temp.name, fp16=False)
         print("Time took to process the request and return response is {} sec".format(
             time.time() - start_time))
@@ -73,10 +76,12 @@ def transcribe(file: UploadFile):
         os.remove(temp.name)  # Delete temp file
 
 
-@app.post('/{channel_id}/{user_id}/post')
-async def post_message(channel_id, user_id, file: UploadFile, db: Session = Depends(get_db)):
+@app.post('/post/{channel_id}/{user_id}')
+async def post_message(channel_id, user_id, file: UploadFile, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     transcript = transcribe(file)["transcript"]
     msg = await MessageRepo.create(db, schemas.Message(transcript, user_id, channel_id))
+    # background_tasks.add_task(send_to_gemini, msg, ai_manager)
+    msg.username = UserRepo.fetch_by_id(db, user_id).name
     await manager.broadcast(json.dumps(jsonable_encoder(msg)), channel_id)
     return msg
 
@@ -91,7 +96,7 @@ def get_conversation(channel_id, db: Session = Depends(get_db)):
     return MessageRepo.fetch_by_channel(db, channel_id)
 
 
-@app.websocket("/ws/{channel_id}/{user_id}/")
+@app.websocket("/ws/{channel_id}/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, channel_id: str, user_id: int):
     await manager.connect(channel_id, websocket)
     try:
