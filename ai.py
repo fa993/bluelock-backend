@@ -13,7 +13,7 @@ load_dotenv()
 
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 
-PROMPT = "You will be given a transcript of a conversation, your job is to detect whether any of the callers are potential scammers and/or speaking with malicious intent. You must also format your responses as json with the following key: { 'suspicious': true/false}. You will be given snippets of the conversation at a time, please be aware that they belong to the same conversation. Do not add in additional comments, just stick to the json. If you would like to add further reasoning, please keep it to within 3 lines and add it in the key 'comments'. Keep the property names in double quotes. The boolean values true and false must be lowercase"
+PROMPT = """You will be given a transcript of a conversation, You must detect and categorise the transcripts as one of certain flags, which will be given in a format that is specified further down. You must also give your answer as a json array with the following key: [{ "<flagname>": "<reason why it was flagged>" }]. You will be given snippets of the conversation at a time, please be aware that they belong to the same conversation. Do not add in additional comments, just stick to the json. Add the reason why that particular line was flagged in the value of the json field. Keep the property names and value in double quotes. The transcript will be in the form of: Name(Comma separated Flags to detect): Dialog. If there are no flags, return an empty array, Please stick to the flags in the prompts. Also only categorise a particular dialog as a single flag. Do not use markdown, just use plaintext regular json when you format the output"""
 
 # Set up the model
 generation_config = {
@@ -26,19 +26,19 @@ generation_config = {
 safety_settings = [
     {
         "category": "HARM_CATEGORY_HARASSMENT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+        "threshold": "BLOCK_NONE"
     },
     {
         "category": "HARM_CATEGORY_HATE_SPEECH",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+        "threshold": "BLOCK_NONE"
     },
     {
         "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+        "threshold": "BLOCK_NONE"
     },
     {
         "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+        "threshold": "BLOCK_NONE"
     },
 ]
 
@@ -70,10 +70,15 @@ class SessionManager:
                 del self.sessions[channel_id]
 
 
-async def send_to_gemini(msg: models.Message, session_manager: SessionManager, ws_manager: ConnectionManager, db: Session):
+async def send_to_gemini(msg: models.Message, flags, session_manager: SessionManager, ws_manager: ConnectionManager, db: Session):
     convo = session_manager.sessions.get(msg.channel_id, None)
     if not convo:
         convo = await session_manager.create_session(msg.channel_id, msg.sender_id)
-    response = await convo.send_message_async(f"{msg.sender_id}: {msg.body}")
-    repositories.MessageRepo.update_ai(db, msg.id, json.loads(response.text))
+    response = await convo.send_message_async(f"{msg.username}({flags}): {msg.body}")
+    res = response.text
+    res = res.strip('```')
+    res = res.strip()
+    res = res.strip("json")
+    repositories.MessageRepo.update_ai(db, msg.id, res)
+    msg.AIComments = res
     await ws_manager.broadcast(json.dumps(jsonable_encoder(msg)), msg.channel_id)

@@ -35,6 +35,10 @@ app.add_middleware(
 
 models.Base.metadata.create_all(bind=engine)
 
+DEFAULT_USER_NAME = "Anonymous"
+
+DEFAULT_FLAGS = "task, fact, inconsistency, suspicious"
+
 
 @app.exception_handler(Exception)
 def validation_exception_handler(request, err):
@@ -73,20 +77,22 @@ def transcribe(file: UploadFile):
         raise HTTPException(status_code=500, detail='Something went wrong')
     finally:
         # temp.close()  # the `with` statement above takes care of closing the file
-        print(temp.name)
-        # os.remove(temp.name)  # Delete temp file
+        os.remove(temp.name)  # Delete temp file
 
 
 @app.post('/post/{channel_id}/{user_id}')
-async def post_message(channel_id, user_id, file: UploadFile, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def post_message(channel_id, user_id, file: UploadFile, background_tasks: BackgroundTasks, flags: str | None = None, db: Session = Depends(get_db)):
     transcript = transcribe(file)["transcript"]
     msg = await MessageRepo.create(db, schemas.Message(transcript, user_id, channel_id))
-    background_tasks.add_task(send_to_gemini, msg, ai_manager, manager, db)
     user = UserRepo.fetch_by_id(db, user_id)
     if user:
         msg.username = user.name
     else:
-        msg.username = "Anonymous"
+        msg.username = DEFAULT_USER_NAME
+    if not flags:
+        flags = DEFAULT_FLAGS
+    background_tasks.add_task(
+        send_to_gemini, msg, flags, ai_manager, manager, db)
     await manager.broadcast(json.dumps(jsonable_encoder(msg)), channel_id)
     return msg
 

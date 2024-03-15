@@ -37,7 +37,7 @@ class MessageRepo:
 
     async def create(db: Session, message: schemas.Message):
         db_item = models.Message(
-            body=message.body, sender_id=message.sender_id, channel_id=message.channel_id, AIComments="", suspicious=False)
+            body=message.body, sender_id=message.sender_id, channel_id=message.channel_id, AIComments="")
         db.add(db_item)
         db.commit()
         db.refresh(db_item)
@@ -58,6 +58,6 @@ class MessageRepo:
         db.commit()
 
     def update_ai(db: Session, msg_id: int, raw_op):
-        db.query(models.Message).filter_by(id=msg_id).update({'AIComments': raw_op.get(
-            "comments", ""), 'suspicious': raw_op.get("suspicious", "false") == 'true'})
+        db.query(models.Message).filter_by(
+            id=msg_id).update({'AIComments': raw_op})
         db.commit()
