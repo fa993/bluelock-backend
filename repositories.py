@@ -46,7 +46,7 @@ class MessageRepo:
     def fetch_by_id(db: Session, _id):
         return db.query(models.Message).filter(models.Message.id == _id).first()
 
-    def fetch_by_channel(db: Session, channel_id, skip: int = 0, limit: int = 100):
+    def fetch_by_channel(db: Session, channel_id, skip: int = 0, limit: int = 100) -> list[models.Message]:
         return db.query(models.Message).filter(models.Message.channel_id == channel_id).order_by(desc(models.Message.sentAt)).offset(skip).limit(limit).all()
 
     def fetch_all(db: Session, skip: int = 0, limit: int = 100):
@@ -58,6 +58,7 @@ class MessageRepo:
         db.commit()
 
     def update_ai(db: Session, msg_id: int, raw_op):
+        print(raw_op)
         db.query(models.Message).filter_by(id=msg_id).update({'AIComments': raw_op.get(
-            "comments", ""), 'suspicious': raw_op.get("suspicious", "false") == 'true'})
+            "comments", ""), 'suspicious': raw_op.get("suspicious")})
         db.commit()

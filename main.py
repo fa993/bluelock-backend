@@ -72,7 +72,8 @@ def transcribe(file: UploadFile):
         raise HTTPException(status_code=500, detail='Something went wrong')
     finally:
         # temp.close()  # the `with` statement above takes care of closing the file
-        os.remove(temp.name)  # Delete temp file
+        print(temp.name)
+        # os.remove(temp.name)  # Delete temp file
 
 
 @app.post('/post/{channel_id}/{user_id}')
@@ -80,7 +81,11 @@ async def post_message(channel_id, user_id, file: UploadFile, background_tasks: 
     transcript = transcribe(file)["transcript"]
     msg = await MessageRepo.create(db, schemas.Message(transcript, user_id, channel_id))
     background_tasks.add_task(send_to_gemini, msg, ai_manager, manager, db)
-    msg.username = UserRepo.fetch_by_id(db, user_id).name
+    user = UserRepo.fetch_by_id(db, user_id)
+    if user:
+        msg.username = user.name
+    else:
+        msg.username = "Anonymous"
     await manager.broadcast(json.dumps(jsonable_encoder(msg)), channel_id)
     return msg
 
@@ -92,7 +97,14 @@ async def get_user_id(name: str, db: Session = Depends(get_db)):
 
 @app.get('/{channel_id}/report')
 def get_conversation(channel_id, db: Session = Depends(get_db)):
-    return MessageRepo.fetch_by_channel(db, channel_id)
+    msgs = MessageRepo.fetch_by_channel(db, channel_id)
+    for msg in msgs:
+        user = UserRepo.fetch_by_id(db, msg.sender_id)
+        if user:
+            msg.username = user.name
+        else:
+            msg.username = "Anonymous"
+    return msgs
 
 
 @app.websocket("/ws/{channel_id}/{user_id}")

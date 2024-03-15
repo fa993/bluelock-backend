@@ -13,7 +13,7 @@ load_dotenv()
 
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 
-PROMPT = "You will be given a transcript of a conversation, your job is to detect whether any of the callers are potential scammers and/or speaking with malicious intent. You must also format your responses as json with the following key: { 'suspicious': true/false}. You will be given snippets of the conversation at a time, please be aware that they belong to the same conversation. Do not add in additional comments, just stick to the json. If you would like to add further reasoning, please keep it to within 3 lines and add it in the key 'comments'. Keep the property names in double quotes"
+PROMPT = "You will be given a transcript of a conversation, your job is to detect whether any of the callers are potential scammers and/or speaking with malicious intent. You must also format your responses as json with the following key: { 'suspicious': true/false}. You will be given snippets of the conversation at a time, please be aware that they belong to the same conversation. Do not add in additional comments, just stick to the json. If you would like to add further reasoning, please keep it to within 3 lines and add it in the key 'comments'. Keep the property names in double quotes. The boolean values true and false must be lowercase"
 
 # Set up the model
 generation_config = {
