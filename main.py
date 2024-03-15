@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from fastapi.encoders import jsonable_encoder
 import whisper
 import os
+import uvicorn
 import json
 import time
 from tempfile import NamedTemporaryFile
@@ -117,3 +118,7 @@ async def websocket_endpoint(websocket: WebSocket, channel_id: str, user_id: int
     except WebSocketDisconnect:
         manager.disconnect(websocket)
         await manager.broadcast(f"Client #{user_id} left the chat", channel_id)
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
