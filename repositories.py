@@ -56,3 +56,8 @@ class MessageRepo:
         db_item = db.query(models.Message).filter_by(id=message_id).first()
         db.delete(db_item)
         db.commit()
+
+    def update_ai(db: Session, msg_id: int, raw_op):
+        db.query(models.Message).filter_by(id=msg_id).update({'AIComments': raw_op.get(
+            "comments", ""), 'suspicious': raw_op.get("suspicious", "false") == 'true'})
+        db.commit()

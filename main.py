@@ -6,7 +6,6 @@ import models as models
 import schemas as schemas
 from repositories import UserRepo, MessageRepo
 from sqlalchemy.orm import Session
-import uvicorn
 from fastapi.encoders import jsonable_encoder
 import whisper
 import os
@@ -80,7 +79,7 @@ def transcribe(file: UploadFile):
 async def post_message(channel_id, user_id, file: UploadFile, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     transcript = transcribe(file)["transcript"]
     msg = await MessageRepo.create(db, schemas.Message(transcript, user_id, channel_id))
-    # background_tasks.add_task(send_to_gemini, msg, ai_manager)
+    background_tasks.add_task(send_to_gemini, msg, ai_manager, manager, db)
     msg.username = UserRepo.fetch_by_id(db, user_id).name
     await manager.broadcast(json.dumps(jsonable_encoder(msg)), channel_id)
     return msg
