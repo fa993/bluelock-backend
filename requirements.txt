@@ -235,14 +235,6 @@ stack-data==0.6.2
 starlette==0.36.3
 sympy==1.12
 tenacity==8.2.3
-tensorboard==2.14.1
-tensorboard-data-server==0.7.1
-tensorflow==2.14.0
-tensorflow-datasets==4.9.3
-tensorflow-estimator==2.14.0
-tensorflow-io-gcs-filesystem==0.34.0
-tensorflow-macos==2.14.0
-tensorflow-metadata==1.14.0
 termcolor==2.3.0
 thop==0.1.1.post2209072238
 threadpoolctl==3.2.0
