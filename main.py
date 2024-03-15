@@ -37,7 +37,7 @@ models.Base.metadata.create_all(bind=engine)
 
 DEFAULT_USER_NAME = "Anonymous"
 
-DEFAULT_FLAGS = "task, fact, inconsistency, suspicious"
+DEFAULT_FLAGS = "incorrect, suspicious, correct, inconsistency"
 
 
 @app.exception_handler(Exception)
